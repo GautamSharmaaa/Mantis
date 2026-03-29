@@ -837,23 +837,36 @@ def _build_ats_context_block(ats_report: dict) -> str:
 
     lines: list[str] = ["## ATS Analysis — Fix These Issues to Hit 100/100\n"]
 
-    # Current score
+    # Current score — grade is a dict {"grade": "B", "label": "..."}
     score = ats_report.get("score")
-    grade = ats_report.get("grade", "")
+    grade_obj = ats_report.get("grade", {})
+    grade_str = ""
+    if isinstance(grade_obj, dict):
+        grade_str = f"{grade_obj.get('grade', '')} — {grade_obj.get('label', '')}".strip(" —")
+    elif isinstance(grade_obj, str):
+        grade_str = grade_obj
     if score is not None:
-        lines.append(f"**Current ATS Score: {score}/100 ({grade})** — your goal is 100.\n")
+        lines.append(f"**Current ATS Score: {score}/100 ({grade_str})** — your task is to rewrite it to 100/100.\n")
 
-    # Missing keywords — critical to add
+    # Missing keywords — must be injected into skills and bullets
     missing = ats_report.get("missing_keywords", [])
     if missing:
-        lines.append(f"**MISSING KEYWORDS (MUST add ALL to skills and bullets):** {', '.join(missing)}\n")
+        lines.append(
+            f"**MISSING KEYWORDS — add ALL of these to the skills list and weave them naturally into bullets:**\n"
+            f"  {', '.join(missing)}\n"
+        )
 
-    # Partial matches — close but not exact
+    # Matched keywords — already present, reinforce them
+    matched = ats_report.get("matched_keywords", [])
+    if matched:
+        lines.append(f"**Already matched keywords (keep and strengthen):** {', '.join(matched[:12])}\n")
+
+    # Partial matches
     partial = ats_report.get("partial_matches", [])
     if partial:
-        lines.append(f"**Partial keyword matches (strengthen these):** {', '.join(partial[:6])}\n")
+        lines.append(f"**Weak/partial keyword matches (use exact wording):** {', '.join(partial[:8])}\n")
 
-    # Section-level scores
+    # Section-level scores — flag anything below 80
     section_results = ats_report.get("section_results", [])
     weak_sections = [
         f"{sr.get('name', sr.get('sectionId', '?'))} ({sr.get('percentageScore', sr.get('score', 0)):.0f}/100)"
@@ -861,24 +874,28 @@ def _build_ats_context_block(ats_report: dict) -> str:
         if isinstance(sr, dict) and sr.get("percentageScore", sr.get("score", 100)) < 80
     ]
     if weak_sections:
-        lines.append(f"**Weak sections to improve:** {', '.join(weak_sections)}\n")
+        lines.append(f"**Weak sections to aggressively improve:** {', '.join(weak_sections)}\n")
 
-    # Actionable suggestions from ATS engine
+    # Actionable suggestions — directly from the ATS engine
     suggestions = ats_report.get("suggestions", [])
     if suggestions:
-        lines.append("**ATS Suggestions (implement ALL of these):**")
-        for s in suggestions[:10]:
+        lines.append("**ATS Engine Suggestions (implement EVERY one of these):**")
+        for s in suggestions[:12]:
             if isinstance(s, dict):
                 priority = s.get("priority", "")
                 text = s.get("text", "")
+                example = s.get("example", "")
                 if text:
                     prefix = "🔴" if priority == "critical" else "🟠" if priority == "high" else "🟡"
-                    lines.append(f"  {prefix} {text}")
+                    entry = f"  {prefix} [{priority.upper()}] {text}"
+                    if example:
+                        entry += f" (e.g. {example})"
+                    lines.append(entry)
             elif isinstance(s, str):
                 lines.append(f"  • {s}")
         lines.append("")
 
-    # Breakdown scores
+    # Breakdown dimension scores — flag everything below 75
     breakdown = ats_report.get("breakdown", {})
     if breakdown:
         low_dims = [
@@ -887,7 +904,19 @@ def _build_ats_context_block(ats_report: dict) -> str:
             if isinstance(v, (int, float)) and v < 75 and k != "red_flag_penalty"
         ]
         if low_dims:
-            lines.append(f"**Low-scoring dimensions:** {', '.join(low_dims)}\n")
+            lines.append(f"**Underperforming ATS dimensions (target 95%+ each):** {', '.join(low_dims)}\n")
+
+    # Audit-level hints — weak words and metric density
+    audit = ats_report.get("audit", {})
+    weak_words = audit.get("weak_words_used", [])
+    if weak_words:
+        lines.append(f"**Weak/banned phrases found in resume (remove all):** {', '.join(weak_words[:8])}\n")
+    action_pct = audit.get("action_verb_pct", 0)
+    metric_pct = audit.get("metric_pct", 0)
+    if action_pct < 90:
+        lines.append(f"**Only {action_pct:.0f}% of bullets start with action verbs — target 100%.**\n")
+    if metric_pct < 70:
+        lines.append(f"**Only {metric_pct:.0f}% of bullets contain metrics — target ≥80%.**\n")
 
     return "\n".join(lines)
 
