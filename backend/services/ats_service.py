@@ -1028,7 +1028,7 @@ def _red_flag_penalty(resume: Resume, resume_text: str) -> tuple[int, list[Sugge
 
 def calculate_ats_score(
     resume:       Resume,
-    jd:           str,
+    jd:           str = "",
     *,
     resume_text:  str | None        = None,
     keyword_data: dict[str, Any] | None = None,
@@ -1039,7 +1039,7 @@ def calculate_ats_score(
     Parameters
     ----------
     resume       : Parsed Resume model object.
-    jd           : Raw job description text.
+    jd           : Raw job description text (optional).
     resume_text  : Optional pre‑flattened resume text (avoids re‑serialisation).
     keyword_data : Optional pre‑extracted keyword dict (for batch processing).
 
@@ -1049,39 +1049,48 @@ def calculate_ats_score(
     keyword analysis, and audit metadata.
     """
     _require_resume(resume)
-    target_jd  = _require_text(jd, "jd")
+    target_jd = clean_text(jd) if jd else ""
     flat       = clean_text(resume_text) if resume_text else resume_to_text(resume)
 
     # ── Core analyses ─────────────────────────────────────────────────────────
-    kw_data_obj   = keyword_data or extract_keywords(target_jd)
-    kw_result     = keyword_match_score(flat, kw_data_obj)
-    sim           = similarity_score(flat, target_jd)
+    kw_data_obj   = keyword_data if keyword_data else (extract_keywords(target_jd) if target_jd else {"keywords": [], "frequency_map": {}, "tfidf_map": {}})
+    kw_result     = keyword_match_score(flat, kw_data_obj) if target_jd else {"score": 0, "missing_keywords": [], "matched": [], "partial_matches": [], "match_rate": 0}
+    sim           = similarity_score(flat, target_jd) if target_jd else 0.0
     read          = readability_score(flat)
 
     summary_res   = _analyze_summary(resume)
     exp_res       = _analyze_experience(resume)
-    skills_res    = _analyze_skills(resume, jd_keywords=kw_data_obj.get("keywords"))
+    skills_res    = _analyze_skills(resume, jd_keywords=kw_data_obj.get("keywords") if target_jd else None)
     edu_res       = _analyze_education(resume)
     proj_res      = _analyze_projects(resume)
     fmt_res       = _analyze_formatting(resume, flat)
 
     penalty, penalty_suggestions = _red_flag_penalty(resume, flat)
 
+    # ── Weight Adjustment for No-JD Mode ──────────────────────────────────────
+    active_weights = dict(WEIGHTS)
+    if not target_jd:
+        active_weights["keyword_match"] = 0.0
+        active_weights["semantic_sim"] = 0.0
+        active_weights["bullet_strength"] += 0.20
+        active_weights["summary"] += 0.05
+        active_weights["skills"] += 0.05
+
     # ── Weighted final score ──────────────────────────────────────────────────
     raw_score = (
-        kw_result["score"]         * WEIGHTS["keyword_match"]
-        + sim                      * WEIGHTS["semantic_sim"]
-        + exp_res.percentage_score * WEIGHTS["bullet_strength"]
-        + summary_res.percentage_score * WEIGHTS["summary"]
-        + skills_res.percentage_score  * WEIGHTS["skills"]
-        + edu_res.percentage_score     * WEIGHTS["education"]
-        + proj_res.percentage_score    * WEIGHTS["projects"]
-        + fmt_res.percentage_score     * WEIGHTS["formatting"]
-        + read                         * WEIGHTS["readability"]
-        - penalty                      * WEIGHTS["red_flag_penalty"]
+        kw_result["score"]         * active_weights["keyword_match"]
+        + sim                      * active_weights["semantic_sim"]
+        + exp_res.percentage_score * active_weights["bullet_strength"]
+        + summary_res.percentage_score * active_weights["summary"]
+        + skills_res.percentage_score  * active_weights["skills"]
+        + edu_res.percentage_score     * active_weights["education"]
+        + proj_res.percentage_score    * active_weights["projects"]
+        + fmt_res.percentage_score     * active_weights["formatting"]
+        + read                         * active_weights["readability"]
+        - penalty                      * active_weights["red_flag_penalty"]
     )
     # Keyword match‑rate bonus (up to 5 points for ≥70% match rate)
-    match_bonus = min(5.0, kw_result["match_rate"] * 7.0)
+    match_bonus = min(5.0, kw_result["match_rate"] * 7.0) if target_jd else 0.0
     final_score = _clamp(raw_score + match_bonus)
 
     # ── Compile all suggestions (deduplicated, priority‑sorted) ──────────────

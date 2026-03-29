@@ -2,9 +2,8 @@ import React from "react";
 import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 
-import ATSPanel from "../components/ATSPanel/ATSPanel";
 import Canvas from "../components/Canvas/Canvas";
-import Chat from "../components/Chat/Chat";
+import SmartPanel from "../components/SmartPanel/SmartPanel";
 import TemplateSelector from "../components/TemplateSelector/TemplateSelector";
 import { chatEdit, downloadDocx, downloadPdf, getScore, updateBullet, syncProfile, optimizeResume, powerGenerate, getAiSuggestions } from "../utils/api";
 import { safeGetItem, safeRandomUUID, safeSetItem } from "../utils/browser";
@@ -108,7 +107,9 @@ export default function Playground() {
   );
   const [mode, setMode] = useState("preview");
   const [showTemplates, setShowTemplates] = useState(false);
-  const [showChat, setShowChat] = useState(true);
+  const [smartPanelOpen, setSmartPanelOpen] = useState(() => {
+    return safeGetItem(`mantis-playground-panel-${id}`, "true") === "true";
+  });
   const [previewPdfUrl, setPreviewPdfUrl] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState("");
@@ -147,7 +148,7 @@ export default function Playground() {
     setTargetRole(safeGetItem(`mantis-playground-role-${id}`, "") || "");
     setMode("preview");
     setShowTemplates(false);
-    setShowChat(true);
+    setSmartPanelOpen(safeGetItem(`mantis-playground-panel-${id}`, "true") === "true");
     setPreviewPdfUrl("");
     setPreviewLoading(false);
     setPreviewError("");
@@ -174,7 +175,8 @@ export default function Playground() {
     safeSetItem(`${JD_STORAGE_PREFIX}${id}`, jobDescription);
     safeSetItem(`mantis-playground-level-${id}`, experienceLevel);
     safeSetItem(`mantis-playground-role-${id}`, targetRole);
-  }, [id, jobDescription, experienceLevel, targetRole]);
+    safeSetItem(`mantis-playground-panel-${id}`, smartPanelOpen ? "true" : "false");
+  }, [id, jobDescription, experienceLevel, targetRole, smartPanelOpen]);
 
   useEffect(() => {
     const syncProfile = () => setProfile(getProfile());
@@ -1189,20 +1191,30 @@ export default function Playground() {
         </div>
 
         <div className="workspace-topbar__actions">
-          <button
-            className={`workspace-action ${mode === "preview" ? "workspace-action--active" : ""}`}
-            onClick={() => setMode((current) => (current === "edit" ? "preview" : "edit"))}
-            type="button"
-          >
-            {mode === "edit" ? "Preview" : "Edit"}
-          </button>
-          <button
-            className={`workspace-action ${showTemplates ? "workspace-action--active" : ""}`}
-            onClick={() => setShowTemplates((current) => !current)}
-            type="button"
-          >
-            Template
-          </button>
+          <div className="workspace-action-group">
+            <button
+              className={`workspace-action ${mode === "edit" ? "workspace-action--active" : ""}`}
+              onClick={() => setMode("edit")}
+              type="button"
+            >
+              Edit
+            </button>
+            <button
+              className={`workspace-action ${mode === "preview" ? "workspace-action--active" : ""}`}
+              onClick={() => setMode("preview")}
+              type="button"
+            >
+              Preview
+            </button>
+            <button
+              className={`workspace-action ${showTemplates ? "workspace-action--active" : ""}`}
+              onClick={() => setShowTemplates((current) => !current)}
+              type="button"
+            >
+              Template
+            </button>
+          </div>
+          
           <div className="workspace-download-group">
             <button
               className={`workspace-action workspace-action--primary ${exportLoading ? "workspace-action--loading" : ""}`}
@@ -1219,14 +1231,11 @@ export default function Playground() {
             )}
           </div>
           <button
-            className={`workspace-action ${showChat ? "workspace-action--active" : ""}`}
-            onClick={() => setShowChat((current) => !current)}
+            className={`workspace-action ${smartPanelOpen ? "workspace-action--active" : ""}`}
+            onClick={() => setSmartPanelOpen((current) => !current)}
             type="button"
           >
-            AI Chat
-          </button>
-          <button className={`workspace-action ${exportLoading === "sync" ? "workspace-action--loading" : ""}`} onClick={handleSyncProfileButton} type="button">
-            {exportLoading === "sync" ? "Syncing..." : "Sync My Info"}
+            ⚡ Smart Panel
           </button>
         </div>
       </header>
@@ -1245,7 +1254,7 @@ export default function Playground() {
       {errorMessage ? <div className="workspace-flash workspace-flash--error">{errorMessage}</div> : null}
       {successMessage ? <div className="workspace-flash workspace-flash--success">{successMessage}</div> : null}
 
-      <div className={`workspace-body ${showChat ? "" : "workspace-body--full"}`}>
+      <div className={`workspace-body ${smartPanelOpen ? "" : "workspace-body--full"}`}>
         <Canvas
           resume={currentResume}
           profile={profile}
@@ -1279,12 +1288,18 @@ export default function Playground() {
           onClearSelection={handleClearSelection}
         />
 
-        {showChat ? (
-          <Chat
+        {smartPanelOpen ? (
+          <SmartPanel
+            scoreData={scoreData}
+            isScoreLoading={isScoreLoading}
+            scoreDelta={scoreDelta}
+            jobDescription={jobDescription}
+            onManualCheck={handleManualAtsCheck}
+            onPowerGenerate={handlePowerGenerate}
+            isPowerLoading={isPowerLoading}
             messages={messages}
             selectionMeta={selectionMeta}
             selectedText={selectedText}
-            jobDescription={jobDescription}
             onJobDescriptionChange={setJobDescription}
             experienceLevel={experienceLevel}
             onExperienceLevelChange={setExperienceLevel}
@@ -1292,26 +1307,15 @@ export default function Playground() {
             onTargetRoleChange={setTargetRole}
             onSend={handleSendChat}
             onOptimizeAll={handleOptimizeAll}
-            onManualAtsCheck={handleManualAtsCheck}
-            isLoading={isChatLoading}
+            isChatLoading={isChatLoading}
             isOptimizing={isOptimizing}
             hasApiKey={hasApiKey}
             statusMessage={errorMessage}
-            atsScore={scoreData.score}
-            weakWords={scoreData.weak_words_used || []}
+            onSyncInfo={handleSyncProfileButton}
+            syncLoading={exportLoading === "sync"}
           />
         ) : null}
       </div>
-
-      <ATSPanel
-        scoreData={scoreData}
-        isLoading={isScoreLoading}
-        scoreDelta={scoreDelta}
-        jobDescription={jobDescription}
-        onManualCheck={handleManualAtsCheck}
-        onPowerGenerate={handlePowerGenerate}
-        isPowerLoading={isPowerLoading}
-      />
     </section>
   );
 }

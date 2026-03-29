@@ -65,7 +65,7 @@ export function generateResume(payload) {
     method: "POST",
     body: JSON.stringify({
       resume_text: payload.resumeText,
-      job_description: payload.jobDescription,
+      job_description: payload.jobDescription || "",
       api_key: payload.apiKey,
       title: payload.title,
       template: payload.template,

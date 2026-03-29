@@ -1,5 +1,5 @@
-import React from "react";
-import { Route, Routes, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Route, Routes, useNavigate, useLocation } from "react-router-dom";
 
 import Sidebar from "./components/Sidebar/Sidebar";
 import Dashboard from "./pages/Dashboard";
@@ -10,6 +10,12 @@ import { createResume, getResumes } from "./utils/resumeStorage";
 
 function AppShell() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => location.pathname.startsWith('/playground/'));
+
+  useEffect(() => {
+    setIsSidebarCollapsed(location.pathname.startsWith('/playground/'));
+  }, [location.pathname]);
 
   const handleCreateResume = () => {
     const resumes = getResumes();
@@ -22,8 +28,12 @@ function AppShell() {
   };
 
   return (
-    <div className="app-shell">
-      <Sidebar onCreateResume={handleCreateResume} />
+    <div className={`app-shell ${isSidebarCollapsed ? "app-shell--collapsed" : ""}`}>
+      <Sidebar 
+        onCreateResume={handleCreateResume} 
+        isCollapsed={isSidebarCollapsed} 
+        onToggle={() => setIsSidebarCollapsed(v => !v)} 
+      />
       <main className="app-content">
         <Routes>
           <Route path="/" element={<Dashboard onCreateResume={handleCreateResume} />} />

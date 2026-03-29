@@ -11,13 +11,13 @@ router = APIRouter(tags=["score"])
 
 class ScoreRequest(BaseModel):
     resume: Resume
-    job_description: str = Field(..., min_length=1)
+    job_description: str = ""
 
 
 @router.post("/score")
 def score_resume(payload: ScoreRequest) -> dict[str, object]:
     resume_text = resume_to_text(payload.resume)
-    keyword_data = extract_keywords(payload.job_description)
+    keyword_data = extract_keywords(payload.job_description) if payload.job_description else {}
     score_data = calculate_ats_score(
         payload.resume,
         payload.job_description,

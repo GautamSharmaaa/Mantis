@@ -39,11 +39,11 @@ function BrandIcon() {
   );
 }
 
-export default function Sidebar({ onCreateResume }) {
+export default function Sidebar({ onCreateResume, isCollapsed, onToggle }) {
   const location = useLocation();
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isCollapsed ? "sidebar--collapsed" : ""}`}>
       <div className="sidebar__top">
         <div className="sidebar__brand">
           <div className="sidebar__brand-icon">
@@ -73,11 +73,17 @@ export default function Sidebar({ onCreateResume }) {
 
       <div className="sidebar__footer">
         <div className="sidebar__user-avatar">M</div>
-        <div>
-          <strong>User</strong>
-          <span>Free Plan</span>
-        </div>
+        {isCollapsed ? null : (
+          <div>
+            <strong>User</strong>
+            <span>Free Plan</span>
+          </div>
+        )}
       </div>
+
+      <button className="sidebar__toggle" onClick={onToggle} type="button" aria-expanded={!isCollapsed}>
+        {isCollapsed ? "▸" : "◂"}
+      </button>
     </aside>
   );
 }

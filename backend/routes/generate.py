@@ -12,7 +12,7 @@ router = APIRouter(tags=["generate"])
 
 class GenerateRequest(BaseModel):
     resume_text: str = Field(..., min_length=1)
-    job_description: str = Field(..., min_length=1)
+    job_description: str = ""
     api_key: str = Field(..., min_length=1)
     title: str = Field(..., min_length=1)
     template: str = Field(..., min_length=1)
@@ -28,6 +28,11 @@ def generate_resume(payload: GenerateRequest) -> dict[str, object]:
 
     resume = create_empty_resume(payload.title, payload.template)
     resume.data = generated_resume.data
+    
+    from services.ats_service import calculate_ats_score
+    score_data = calculate_ats_score(resume, jd=payload.job_description)
+    resume.ats_score = score_data.get("score", 0)
+    
     return _success(resume.model_dump(mode="json"))
 
 

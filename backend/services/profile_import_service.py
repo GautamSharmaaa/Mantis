@@ -29,11 +29,13 @@ _LINK_PATTERN = re.compile(r"(https?://[^\s|•]+|(?:www\.)[^\s|•]+)")
 def extract_profile_from_file(filename: str, content: bytes, api_key: str | None = None) -> dict[str, object]:
     resume_text = extract_resume_text(filename, content)
     
+    used_llm = False
     if api_key and api_key.strip():
         from services.ai_service import extract_full_profile_data
         llm_profile = extract_full_profile_data(resume_text, api_key.strip())
         if llm_profile is not None:
             profile = llm_profile
+            used_llm = True
         else:
             profile = extract_profile_from_text(resume_text, filename=filename)
     else:
@@ -45,6 +47,8 @@ def extract_profile_from_file(filename: str, content: bytes, api_key: str | None
         "detected_fields": detected_fields,
         "source_filename": filename,
         "text_preview": resume_text[:400],
+        "full_text": resume_text,
+        "used_llm": used_llm,
     }
 
 

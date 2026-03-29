@@ -1,0 +1,160 @@
+--- /Users/gautam/Documents/Mantis/frontend/src/styles.css
++++ /Users/gautam/Documents/Mantis/frontend/src/styles.css
+@@ -117,10 +117,8 @@
+ }
+ 
+ .app-shell {
+-  display: grid;
+-  grid-template-columns: 198px minmax(0, 1fr);
++  display: flex;
+   min-height: 100vh;
+ }
+ 
+ .app-content {
++  flex: 1;
+   min-width: 0;
+   padding: 0;
+ }
+@@ -130,22 +128,34 @@
+   flex-direction: column;
++  width: 198px;
++  flex-shrink: 0;
+   min-height: 100vh;
+   border-right: 1px solid var(--border);
+   background: #0d1210;
++  transition: width 250ms cubic-bezier(0.23, 1, 0.32, 1);
++  overflow: hidden;
++  position: sticky;
++  top: 0;
++  z-index: 50;
+ }
+ 
++.app-shell--collapsed .sidebar {
++  width: 58px;
++}
++
+ .sidebar__top {
+   padding: 14px 10px 0;
++  width: 198px;
+ }
+ 
+ .sidebar__brand {
+   display: flex;
+   align-items: center;
+   gap: 10px;
+   padding: 0 4px 16px;
+   border-bottom: 1px solid var(--border);
+ }
+ 
+ .sidebar__brand h1 {
+   margin: 0;
+   font-family: "Manrope", "IBM Plex Sans", sans-serif;
+   font-size: 1rem;
+   font-weight: 800;
+   letter-spacing: -0.03em;
++  transition: opacity 150ms;
+ }
+ 
++.app-shell--collapsed .sidebar__brand h1 {
++  opacity: 0;
++  pointer-events: none;
++}
++
+ .sidebar__brand-icon {
+-  width: 18px;
+-  height: 18px;
++  width: 22px;
++  height: 22px;
+   color: var(--accent);
++  flex-shrink: 0;
++  margin-left: 2px;
+ }
+ 
+@@ -172,13 +182,21 @@
+   align-items: center;
+   justify-content: flex-start;
+   gap: 10px;
+-  width: 100%;
++  width: 178px;
+   margin-top: 12px;
+   padding: 11px 14px;
+   border: 0;
+   border-radius: 8px;
+   background: var(--accent);
+   color: #032b1a;
+   font-weight: 700;
+   cursor: pointer;
++  white-space: nowrap;
+ }
+ 
++.app-shell--collapsed .sidebar__create span:last-child {
++  opacity: 0;
++  pointer-events: none;
++}
++
+ .sidebar__create:hover {
+@@ -191,6 +209,7 @@
+ .sidebar__nav {
+   display: grid;
+   gap: 4px;
+   padding: 16px 10px;
++  width: 198px;
+ }
+ 
+@@ -198,16 +217,23 @@
+   display: flex;
+   align-items: center;
+   gap: 10px;
+-  padding: 10px 12px;
++  padding: 10px 14px;
+   border: 1px solid transparent;
+   border-radius: 8px;
+   color: var(--muted);
+   text-decoration: none;
++  white-space: nowrap;
+ }
+ 
++.app-shell--collapsed .sidebar__link span {
++  opacity: 0;
++  pointer-events: none;
++}
++
+ .sidebar__link svg {
+   width: 16px;
+   height: 16px;
++  flex-shrink: 0;
+ }
+ 
+@@ -226,6 +252,7 @@
+   align-items: center;
+   gap: 10px;
+   margin-top: auto;
+   padding: 12px 10px;
+   border-top: 1px solid var(--border);
++  width: 198px;
+ }
+ 
+@@ -253,4 +280,18 @@
+   color: var(--soft);
+   font-size: 0.72rem;
++  flex-shrink: 0;
++}
++
++.sidebar__toggle {
++  display: flex;
++  align-items: center;
++  justify-content: center;
++  padding: 12px;
++  background: transparent;
++  border: none;
++  border-top: 1px solid var(--border);
++  color: var(--muted);
++  cursor: pointer;
++  width: 198px;
++}
++
++.sidebar__toggle:hover {
++  background: rgba(255, 255, 255, 0.02);
++  color: var(--text);
+ }
+ 
