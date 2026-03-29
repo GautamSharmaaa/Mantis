@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+openai
+scikit-learn
+python-docx
+reportlab
+pydantic[email]
+python-multipart
+pypdf
+google-genai==1.69.0
